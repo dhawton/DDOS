@@ -1,0 +1,5 @@
+bin = {
+		"/ddos.sys",
+		"/command.com",
+		"/dos/update.lua"
+}

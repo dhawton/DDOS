@@ -1,0 +1,82 @@
+_G.OS_DATA = {}
+_G.OS_DATA.NAME = "DDOS"
+_G.OS_DATA.VERSION = "0.1"
+_G.OS_DATA.FULL_WRITE = _G.OS_DATA.NAME .. " " .. _G.OS_DATA.VERSION
+
+_G.OS_DATA.VERSION_COMP = 1
+
+local screen = component.list("screen", true)()
+for addr in component.list("screen", true) do
+		if #component.invoke(addr, "getKeyboards") > 0 then
+				screen = addr
+				break
+		end
+end
+
+local gpu = component.list("gpu", true)()
+for addr in component.list("gpu") do
+		if component.invoke(addr, "maxResolution") > component.invoke(gpu, "maxResolution") then
+				gpu = addr
+		end
+end
+
+local w, h
+if gpu and screen then
+		component.invoke(gpu, "bind", screen)
+		w, h = component.invoke(gpu, "maxResolution")
+		component.invoke(gpu, "setResolution", w, h)
+		component.invoke(gpu, "setBackground", 0xFFFFFF)
+		component.invoke(gpu, "setForeground", 0xFFFFFF)
+		component.invoke(gpu, "fill", 1, 1, w, h, " ")
+end
+
+local y = 1
+function status(_msg, _type)
+		if gpu and screen then
+				if _type == "error" then
+						_msg = "[ERROR] " .. tostring(_msg)
+						component.invoke(gpu, "setForeground", 0xFF0000)
+				elseif _type = "success" then
+						component.invoke(gpu, "setForeground", 0x00FF00)
+				else
+						component.invoke(gpu, "setForeground", 0x000000)
+				end
+
+				component.invoke(gpu, "set", 1, y, tostring(_msg))
+				component.invoke(gpu, "setForeground", 0x000000)
+
+				if y == h then
+						component.invoke(gpu, "copy", 1, 2, w, h-1, 0, -1)
+						component.invoke(gpu, "fill", 1, h, w, 1, " ")
+				else
+						y = y + 1
+				end
+		end
+end
+
+local bootaddr = component.invoke(component.list("eeprom")(), "getData")
+
+function dofile(_path)
+		if not component.invoke(bootaddr, "exists", _path) then
+				status("File " .. path .. " not found", error)
+				return nil, "not found"
+		end
+
+		local data, err = loadfile(bootaddr, _path)
+		if data == nil then
+				return nil, err
+		end
+
+		local stat, err = pcall(data)
+		if not stat then
+				status(err, "error")
+				return nil, err
+		end
+		return err, nil
+end
+
+
+status("Starting " .. OS_DATA.FULL_WRITE, "")
+status(" ")
+
+
