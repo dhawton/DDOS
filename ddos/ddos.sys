@@ -1080,9 +1080,6 @@ function DDOS.runfile(...)
   if not _ then printErr(err .. "\n" .. debug.traceback()) end
   return _
 end
-function require(lib)
-	return _G[lib]
-end
 
 DDOS.freeMem = computer.freeMemory()
 

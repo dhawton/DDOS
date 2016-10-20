@@ -1,6 +1,10 @@
 if not DDOS then error("Kernel missing") return end
 
-local shell = {}
+local fs = require("filesystem")
+
+local cmd = {}
+
+_G.cmd = cmd
 
 local tArgs={...}
 local history = {}
@@ -109,27 +113,43 @@ move --- Moves a file.]]) print() return true end
 	if filesystem.exists(command) then
 		if not filesystem.isDirectory(command) then
 			if text.endswith(command, ".lua") then runprog(command, parts) return true end
-			if text.endswith(command, ".bat") then runbat(command, parts) return true end
 			runprog(command, parts) return true
 		end
 	end
-	if filesystem.exists(command .. ".lua")  then
+	if filesystem.exists(command .. ".lua") then
 		if not filesystem.isDirectory(command .. ".lua") then
 			runprog(command .. ".lua", parts)
 			return true
 		end
 	end
-	if filesystem.exists(command .. ".bat") then
-		if not filesystem.isDirectory(command .. ".bat") then
-			runbat(command .. ".bat", parts)
-			return true
-		end
-	end
-	print("'" .. parts[1] .. "' is not an internal or external command, program or batch file.")
+  if filesystem.exists("/dos/" .. command .. ".lua") then
+    if not filesystem.isDirectory("/dos/" .. command .. ".lua") then
+      runprog("/dos/" .. command .. ".lua", parts)
+      return true
+    end
+  end
+	print("Bad command or filename")
 	return false
 end
 
-function shell.runline(line)
+function cmd.setWorkingDirectory(dir)
+  checkArg(1, dir, "string")
+  dir = fs.canonical(dir):gsub("^$", "/"):gsub("(.)/$", "%1")
+  if fs.isDirectory(dir) then
+    cmd.setenv("PWD", dir)
+    return true
+  else
+    return nil, "Not a directory"
+  end
+end
+
+function cmd.getWorkingDirectory()
+  return cmd.getenv("PWD") or "/"
+end
+
+local env = {}
+
+function cmd.runline(line)
 	local result = table.pack(pcall(runline, line))
 	if result[1] then
 		return table.unpack(result, 2, result.n)
@@ -139,13 +159,87 @@ function shell.runline(line)
 	end
 end
 
-if shell.runline(table.concat(tArgs, " ")) == "exit" then return end
+function cmd.parse(...)
+  local params = table.pack(...)
+  local args=  {}
+  local options = {}
+  local doneWithOptions = false
+
+  for i = 1, params.n do
+    local param = params[i]
+    if not doneWithOptions and type(param) == "string" then
+      if param == "--" then
+        doneWithOptions = true
+      elseif unicode.sub(param, 1, 2) == "--" then
+        if param:match("%-%-(.-)=") ~= nil then
+          options[param:match("%-%-(.-)=")] = param:match("=(.*)")
+        else
+          options[unicode.sub(param, 3)] = true
+        end
+      elseif unicode.sub(param, 1, 1) == "-" and param ~= "-" then
+        for j = 2, unicode.len(param) do
+          options[unicode.sub(param, j, j)] = true
+        end
+      else
+        table.insert(args, param)
+      end
+    else
+      table.insert(args, param)
+    end
+  end
+  return args, options
+end
+
+function cmd.resolve(path, ext)
+  if ext then
+    checkArg(2, ext, "string")
+    local where = findFile(path, ext)
+    if where then
+      return where
+    else
+      return nil, "File not found"
+    end
+  else
+    if unicode.sub(path, 1, 1) == "/" then
+      return fs.canonical(path)
+    else
+      return fs.concat(cmd.getWorkingDirectory(), path)
+    end
+  end
+end
+
+function cmd.getenv(varname)
+  if varname == '#' then
+    return #env
+  elseif varname ~= nil then
+    return env[varname]
+  else
+    return env
+  end
+end
+
+function cmd.setenv(varname, value)
+  checkArg(1, varname, "string", "number")
+  if value == nil then
+    env[varname] = nil
+  else
+    local success, val = pcall(tostring, value)
+    if success then
+      env[varname] = val
+      return env[varname]
+    else
+      return nil, val
+    end
+  end
+end
+
+if cmd.runline(table.concat(tArgs, " ")) == "exit" then return end
 
 while true do
-	term.write(filesystem.drive.getcurrent() ..">")
+	term.write(filesystem.drive.getcurrent() ..":" .. cmd.getWorkingDirectory() .. ">")
 	local line = term.read(history)
 	while #history > 10 do
 		table.remove(history, 1)
 	end
-	if shell.runline(line) == "exit" then return end
+	if cmd.runline(line) == "exit" then return end
 end
