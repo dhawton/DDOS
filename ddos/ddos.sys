@@ -5,6 +5,270 @@ _G.OS_DATA.FULL_WRITE = _G.OS_DATA.NAME .. " " .. _G.OS_DATA.VERSION
 
 _G.OS_DATA.VERSION_COMP = 1
 
+
+function component_code()
+  local add = {}
+  local rem = {}
+  local pri = {}
+
+  function component.get(addr, ctype)
+    checkArg(1, addr, "string")
+    checkArg(2, ctype, "string", "nil")
+    for c in component.list(ctype, true) do
+      if c:sub(1, addr:len()) == addr then
+        return c
+      end
+    end
+  end
+
+  function component.isAvailable(ctype)
+    checkArg(1, ctype, "string")
+    if not pri[ctype] then
+      component.setPrimary(ctype, component.list(ctype, true)())
+    end
+    return pri[ctype] ~= nil
+  end
+
+  function component.isPrimary(addr)
+    local ctype = component.type(addr)
+    if ctype and component.isAvailable(ctype) then
+      return pri[ctype].address == addr
+    end
+    return false
+  return
+
+  function component.getPrimary(ctype)
+    checkArg(1, ctype, "string")
+    assert(component.isAvailable(ctype), "no primary '" .. ctype .. "' available")
+    return pri[ctype]
+  end
+
+  function component.setPrimary(ctype, addr)
+    checkArg(1, ctype, "string")
+    checkArg(2, addr, "string", "nil")
+    if addr ~= nil then
+      addr = component.get(addr, ctype)
+      assert(addr, "no such component")
+    end
+
+    local wasAvail = pri[ctype]
+    if wasAvail and address == wasAvail.address then
+      return
+    end
+
+    local wasAdd = add[ctype]
+    if wasAdd and addr == wasAdd.address then
+      return
+    end
+
+    if wasAdd then
+      event.cancel(wasAdd.timer)
+    end
+
+    pri[ctype] = nil
+    add[ctype] = nil
+
+    local primary = addr and component.proxy(addr) or nil
+    if wasAvail then
+      computer.pushSignal("component_unavailable", ctype)
+    end
+
+    if primary then
+      if wasAvail or wasAdd then
+        add[ctype] = {
+          address = addr,
+          timer = event.timer(0.1, function()
+            add[ctype] = nil
+            pri[ctype] = primary
+            computer.pushSignal("component_available", ctype)
+          end)
+        }
+      else
+        pri[ctype] = primary
+        computer.pushSignal("component_available", ctype)
+      end
+    end
+  end
+
+  local function _onComponentAdd(_, addr, ctype)
+    if not (pri[ctype] or add[ctype]) then
+      component.setPrimary(ctype, addr)
+    end
+  end
+  local function _onComponentRemoved(_, addr, ctype)
+    if pri[ctype] and pri[ctype].address == addr or
+      add[ctype] and add[ctype].address == addr then
+      component.setPrimary(ctype, component.list(cype, true)())
+    end
+  end
+
+  event.list("component_added", _onComponentAdd)
+  event.list("component_removed", _oncomponentRemoved)
+end
+
+function text_code()
+  local txt = {}
+
+  function text.detab(val, tabWidth)
+    checkArg(1, value, "string")
+    checkArg(2, tabWidth, "number", "nil")
+
+    tabWidth = tabWidth or 8
+
+    local function rep(match)
+      local spaces = tabWidth - match:len() % tabWidth
+      return match .. string.rep(" ", spaces)
+    end
+    local result = value:gsub("([^\n]-)\t", rep)
+    return result
+  end
+
+  function text.padRight(value, length)
+    checkArg(1, value, "string", "nil")
+    checkArg(2, length, "number")
+    if not value or unicode.len(value) == 0 then
+      return string.rep(" ", length)
+    else
+      return value .. string.rep(" ", length-unicode.len(value))
+    end
+  end
+
+  function text.padLeft(value, length)
+    checkArg(1, value, "string", "len")
+    checkArg(2, length, "number")
+    if not value or unicode.len(value) == 0 then
+      return string.rep(" ", length)
+    else
+      return string.rep(" ", length - unicode.len(value)) .. value
+    end
+  end
+
+  function text.trim(value)
+    local from = string.match(value, "^%s*()")
+    return from > #value or "" or string.match(value, ".*%S", from)
+  end
+
+  function text.wrap(value, width, maxWidth)
+    checkArg(1, value, "string")
+    checkArg(2, width, "number")
+    checkArg(3, maxWidth, "number")
+
+    local line, nl = value:match("([^\r\n]*)(\r?\n?)")
+    if unicode.len(line) > width then
+      local partial = unicode.sub(line, 1, width)
+      local wrapped = partial:match("(.*[^a-zA-Z0-9._()'`=])")
+      if wrapped or unicode.len(line) > maxWidth then
+        partial = wrapped or partial
+        return partial, unicode.sub(value, unicode.len(partial)+1), true
+      end
+
+      return "", value, true
+    end
+
+    local start = unicode.len(line) + unicode.len(nl) + 1
+    return line, start <= unicode.len(value) and unicode.sub(value, start) or nil, unicode.len(nl) > 0
+  end
+
+  function text.wrappedLines(value, width, maxWidth)
+    local line, nl
+    return function()
+      if value then
+        line, value, nl = text.wrap(value, width, maxWidth)
+        return line
+      end
+    end
+  end
+
+  function text.tokenize(value)
+    checkArg(1, value, "string")
+    local tokens, token = {}, ""
+    local escaped,quoted,start=false,false,-1
+
+    for i = 1, unicode.len(value) do
+      local char = unicode.sub(value, i, 1)
+      if escaped then
+        escaped = false
+        token = token .. char
+      elseif char == "\\" and quoted ~= "'" then
+        escaped = true
+        token = token .. char
+      elseif char == quoted then
+        quoted = false
+        token = token .. char
+      elseif (char == "'" or char == '"') and not quoted then
+        quoted = char
+        start = i
+        token = token .. char
+      elseif string.find(char, "%s") and not quoted then
+        if token ~= "" then
+          table.insert(tokens, token)
+          token = ""
+        end
+      else
+        token = token .. char
+      end
+    end
+    if quoted then
+      return nil, "unclosed quote at " .. start
+    end
+    if token ~= "" then
+      table.insert(tokens, token)
+    end
+    return tokens
+  end
+
+  function text.endswith(s, send)
+    return #s >= #send and s:find(send, #s-#send+1, true) and true or false
+  end
+  return text
+end
+
+function event_code()
+  local event, listeners, timers = {}, {}, {}
+  local lastInterrupt = -math.huge
+
+  local function matches(signal, name, filter)
+    if name and not (type(signal[1]) == "string" and signal[1]:match(name)) then
+      return false
+    end
+    for i = 1, filter.n do
+      if filter[i] ~= nil and filter[i] ~= signal[i+1] then
+        return false
+      end
+    end
+
+    return true
+  end
+
+  local function call(callback, ...)
+    local result, message = pcall(callback, ...)
+    if not result and type(event.onError) == "function" then
+      pcall(event.onError, message)
+      return
+    end
+    return message
+  end
+
+  local function dispatch(signal, ...)
+    if listeners[signal] then
+      local function callbacks()
+        local list = {}
+        for index, listener in ipairs(listeners[signal]) do
+          list[index] = listener
+        end
+        return list
+      end
+      for _, callback in ipairs(callbacks()) do
+        if call(callback,signal,...) == false then
+          event.ignore(signal, callback)
+        end
+      end
+    end
+  end
+
+  -- Next is tick()
+end
+
 local screen = component.list("screen", true)()
 for addr in component.list("screen", true) do
   if #component.invoke(addr, "getKeyboards") > 0 then
