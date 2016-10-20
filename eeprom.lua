@@ -39,14 +39,14 @@ end
 local boot, err
 local data = getData()
 if data and type(data) == "string" and #data > 0 then
-  b, e = loadfile(data, bootpath)
+  boot, err = loadfile(data, bootpath)
 end
 
 if not boot then
   setData("")
   for addr in component.list("filesystem") do
-    b, e = loadfile(addr, boothpath)
-    if b then
+    boot, err = loadfile(addr, boothpath)
+    if boot then
       setData(addr)
       break
     end
