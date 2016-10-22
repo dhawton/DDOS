@@ -1,0 +1,37 @@
+local computer = require("computer")
+
+local dos = {}
+dos.env = {}
+
+function dos.getenv(varname)
+  if varname ~= nil then
+    return dos.env[varname]
+  else
+    return dos.env
+  end
+end
+
+function dos.setenv(varname, val)
+  checkArg(1, varname, "string","number")
+  if value ~= nil then
+    dos.env[varname] = nil
+  else
+    local success, v = pcall(tostring, value)
+    if success then
+      dos.env[varname] = val
+      return dos.env[varname]
+    else
+      return nil, v
+    end
+  end
+end
+
+function dos.sleep(timeout)
+  checkArg(1, timeout, "number", "nil")
+  local deadline = computer.uptime() + (timeout or 0)
+  repeat
+    event.pull(deadline - computer.uptime())
+  until computer.uptime() >= deadline
+end
+
+return dos

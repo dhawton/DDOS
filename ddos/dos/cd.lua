@@ -1,8 +1,10 @@
-local fs = require("dos/filesystem.sys")
+local fs = filesystem
 
 local args, ops = cmd.parse(...)
 local path = nil
 local verbose = false
+
+print("Test")
 
 if ops.help or #args == 0 then
   print("Useage cd [dir]")
@@ -23,3 +25,5 @@ if not result then
   io.stderr:write(reason)
   return 1
 end
+
+print("done")

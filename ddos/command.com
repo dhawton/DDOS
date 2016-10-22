@@ -1,7 +1,7 @@
 if not DDOS then error("Kernel missing") return end
 
+local dos = require("dos")
 local fs = require("filesystem")
-
 local cmd = {}
 
 _G.cmd = cmd
@@ -67,6 +67,40 @@ local function outputFile(file, paged)
   else print(buffer) end
 end
 
+function print_r ( t )  
+    local print_r_cache={}
+    local function sub_print_r(t,indent)
+        if (print_r_cache[tostring(t)]) then
+            print(indent.."*"..tostring(t))
+        else
+            print_r_cache[tostring(t)]=true
+            if (type(t)=="table") then
+                for pos,val in pairs(t) do
+                    if (type(val)=="table") then
+                        print(indent.."["..pos.."] => "..tostring(t).." {")
+                        sub_print_r(val,indent..string.rep(" ",string.len(pos)+8))
+                        print(indent..string.rep(" ",string.len(pos)+6).."}")
+                    elseif (type(val)=="string") then
+                        print(indent.."["..pos..'] => "'..val..'"')
+                    else
+                        print(indent.."["..pos.."] => "..tostring(val))
+                    end
+                end
+            else
+                print(indent..tostring(t))
+            end
+        end
+    end
+    if (type(t)=="table") then
+        print(tostring(t).." {")
+        sub_print_r(t,"  ")
+        print("}")
+    else
+        sub_print_r(t,"  ")
+    end
+    print()
+end
+
 local function runline(line)
 	line = text.trim(line)
 	if line == "" then return true end
@@ -79,7 +113,7 @@ local function runline(line)
 	if command == "cls" then term.clear() return true end
 	if command == "ver" then print(_OSVERSION) return true end
 	if command == "mem" then print(math.floor(computer.totalMemory()/1024).."k RAM, "..math.floor(computer.freeMemory()/1024).."k Free") return true end
-	if command == "dir" then for file in filesystem.list("/") do print(file) end return true end
+	if command == "dir" then for file in filesystem.list(dos.getenv("PWD") or "/") do print(file) end return true end
 	if command == "intro" then intro() return true end
 	if command == "disks" then listdrives() return true end
 	if command == "discs" then listdrives() return true end
@@ -89,6 +123,7 @@ local function runline(line)
 	if command == "type" then outputFile(parts[2]) return true end
 	if command == "more" then outputFile(parts[2], true) return true end
 	if command == "echo" then print(table.concat(parts, " ", 2)) return true end
+  if command == "dos" then print_r(dos) return true end
 	if command == "cmds" then printPaged([[
 Internal Commands:
 exit --- Exit the command interpreter, Usually restarts it.
@@ -136,7 +171,7 @@ function cmd.setWorkingDirectory(dir)
   checkArg(1, dir, "string")
   dir = fs.canonical(dir):gsub("^$", "/"):gsub("(.)/$", "%1")
   if fs.isDirectory(dir) then
-    cmd.setenv("PWD", dir)
+    dos.setenv("PWD", dir)
     return true
   else
     return nil, "Not a directory"
@@ -144,7 +179,7 @@ function cmd.setWorkingDirectory(dir)
 end
 
 function cmd.getWorkingDirectory()
-  return cmd.getenv("PWD") or "/"
+  return dos.getenv("PWD") or "/"
 end
 
 local env = {}
@@ -204,31 +239,6 @@ function cmd.resolve(path, ext)
       return fs.canonical(path)
     else
       return fs.concat(cmd.getWorkingDirectory(), path)
-    end
-  end
-end
-
-function cmd.getenv(varname)
-  if varname == '#' then
-    return #env
-  elseif varname ~= nil then
-    return env[varname]
-  else
-    return env
-  end
-end
-
-function cmd.setenv(varname, value)
-  checkArg(1, varname, "string", "number")
-  if value == nil then
-    env[varname] = nil
-  else
-    local success, val = pcall(tostring, value)
-    if success then
-      env[varname] = val
-      return env[varname]
-    else
-      return nil, val
     end
   end
 end
