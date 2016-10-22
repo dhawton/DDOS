@@ -503,6 +503,7 @@ function fs_code()
   function fs.size(path) return fs.invoke("size", path) end
   function fs.spaceTotal() return fs.invoke("spaceTotal") end
   function fs.lastModified(path) return fs.invoke("lastModified", path) end
+  function fs.makeDirectory(path) return fs.invoke("makeDirectory", path) end
 	function fs.list(path)
 		local i = 0
 		local t = fs.invoke("list", path)
@@ -1176,7 +1177,8 @@ local command_drive = fs.drive.getcurrent()
 if filesystem.exists("autoexec.bat") then DDOS.runfile("command.com", "autoexec.bat") else DDOS.runfile("command.com") end
 while true do
 	DDOS.freeMem = computer.freeMemory()
-	print()
-	fs.drive.setcurrent(command_drive)
+  term.clear()
+  fs.drive.setcurrent(command_drive)
+  dos.setenv("PWD", "/")
 	if not DDOS.runfile("command.com") then kernelError() end
 end

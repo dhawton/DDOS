@@ -101,11 +101,12 @@ local function outputFile(file, paged)
 end
 
 function cmd.dir()
-  print(" ")
-  print("  Volume in drive " .. filesystem.drive.getcurrent())
-  print("  Volume Serial Number " .. filesystem.drive.toAddress(filesystem.drive.getcurrent()))
-  print("  Directory of " .. filesystem.drive.getcurrent() .. ":" .. (dos.getenv("PWD") or "/"))
-  print(" ")
+  local buffer = ""
+  buffer = " \n"
+  buffer = buffer .. "  Volume in drive " .. filesystem.drive.getcurrent()
+  buffer = buffer .. "\n  Volume Serial Number " .. filesystem.drive.toAddress(filesystem.drive.getcurrent())
+  buffer = buffer .. "\n  Directory of " .. filesystem.drive.getcurrent() .. ":" .. (dos.getenv("PWD") or "/")
+  buffer = buffer .. "\n "
   local f = 0
   local d = 0
   local totsize = 0
@@ -116,19 +117,29 @@ function cmd.dir()
     if h > 12 then
       h = h - 12
       ap = "PM"
+    elseif h == 12 then
+      ap = "PM"
+    elseif h == 0 then
+      h = 12
+      ap = "AM"
     end
     local md = string.format("%s-%s-%s  %s:%s %s", da.year, pad(nod(da.month)), pad(nod(da.day)), pad(nod(h)), pad(nod(da.min)), ap)
     if filesystem.isDirectory((dos.getenv("PWD") or "") .. "/" .. file) then
-      print(md .. "    <DIR>         " .. file)
+      buffer = buffer .. "\n" .. md .. "    <DIR>         " .. file
       d = d + 1
     else
-      print(md .. "  " .. text.padLeft(comma_format(tostring(filesystem.size(dos.getenv("PWD") .. "/" .. file))), 15) .. " " .. file)
+      buffer = buffer .. "\n" .. md .. "  " .. text.padLeft(comma_format(tostring(filesystem.size(dos.getenv("PWD") .. "/" .. file))), 15) .. " " .. file
       totsize = totsize + filesystem.size(dos.getenv("PWD") .. "/" .. file)
       f = f + 1
     end
   end
-  print(" ", f .. " file(s)", comma_format(tostring(totsize)) .. " bytes")
-  print(" ", d .. " dir(s)", comma_format(tostring(filesystem.spaceTotal() - totsize)) .. " bytes free")
+  buffer = buffer .. "\n     " .. f .. " file(s)\t" .. comma_format(tostring(totsize)) .. " bytes"
+  buffer = buffer .. "\n     " .. d .. " dir(s)\t" .. comma_format(tostring(filesystem.spaceTotal() - totsize)) .. " bytes free"
+  if parts[2] == "/p" then
+    printPaged(buffer)
+  else
+    print(buffer)
+  end
 end
 
 function print_r ( t )  
@@ -182,10 +193,11 @@ local function runline(line)
 	if command == "exit" then history = {} return "exit" end
   if command == "cd" then chgDir(parts) return true end
   if command == "cls" then term.clear() return true end
-	if command == "ver" then print(_OSVERSION) return true end
+	if command == "ver" then print(" ") print(_OSNAME .. " Version " .. _OSVER) return true end
 	if command == "mem" then print(math.floor(computer.totalMemory()/1024).."k RAM, "..math.floor(computer.freeMemory()/1024).."k Free") return true end
-	if command == "dir" then cmd.dir() return true end
-	if command == "intro" then intro() return true end
+	if command == "dir" then cmd.dir(parts) return true end
+  if command == "date" then print(os.date("%Y-%m-%d %I:%M %p")) return true end
+  if command == "intro" then intro() return true end
 	if command == "disks" then listdrives() return true end
 	if command == "discs" then listdrives() return true end
 	if command == "drives" then listdrives() return true end
