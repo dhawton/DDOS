@@ -67,6 +67,28 @@ local function outputFile(file, paged)
   else print(buffer) end
 end
 
+function cmd.dir()
+  print(" ")
+  print("  Volume in drive " .. filesystem.drive.getcurrent())
+  print("  Volume Serial Number " .. filesystem.drive.toAddress(filesystem.drive.getcurrent()))
+  print("  Directory of " .. filesystem.drive.getcurrent() .. ":" .. (dos.getenv("PWD") or "/"))
+  print(" ")
+  local i = 0
+  local totsize = 0
+  for file in filesystem.list((dos.getenv("PWD") or "/")) do
+    if filesystem.isDirectory((dos.getenv("PWD") or "") .. "/" .. file) then
+      print(text.padRight(file, 16), "<DIR>")
+    else
+      print(text.padRight(file, 16), " ", fs.size(dos.getenv("PWD") .. "/" .. file), filesystem.lastModified(dos.getenv("PWD") .. "/" .. file))
+      totsize = totsize + filesystem.size(dos.getenv("PWD") .. "/" .. file)
+    end
+    i = i + 1
+  end
+  print(" ", i .. " file(s)", totsize .. " bytes")
+  print(" ", " ", filesystem.spaceTotal() - totsize .. " bytes free")
+  print(" ")
+end
+
 function print_r ( t )  
     local print_r_cache={}
     local function sub_print_r(t,indent)
@@ -113,7 +135,7 @@ local function runline(line)
 	if command == "cls" then term.clear() return true end
 	if command == "ver" then print(_OSVERSION) return true end
 	if command == "mem" then print(math.floor(computer.totalMemory()/1024).."k RAM, "..math.floor(computer.freeMemory()/1024).."k Free") return true end
-	if command == "dir" then for file in filesystem.list(dos.getenv("PWD") or "/") do print(file) end return true end
+	if command == "dir" then cmd.dir() return true end
 	if command == "intro" then intro() return true end
 	if command == "disks" then listdrives() return true end
 	if command == "discs" then listdrives() return true end
