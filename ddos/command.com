@@ -73,19 +73,21 @@ function cmd.dir()
   print("  Volume Serial Number " .. filesystem.drive.toAddress(filesystem.drive.getcurrent()))
   print("  Directory of " .. filesystem.drive.getcurrent() .. ":" .. (dos.getenv("PWD") or "/"))
   print(" ")
-  local i = 0
+  local f = 0
+  local d = 0
   local totsize = 0
   for file in filesystem.list((dos.getenv("PWD") or "/")) do
     if filesystem.isDirectory((dos.getenv("PWD") or "") .. "/" .. file) then
-      print(text.padRight(file, 16), "<DIR>")
+      print(os.date("%Y-%m-%d  %H:%M") .. "    <DIR>          " .. file)
+      d = d + 1
     else
-      print(text.padRight(file, 16), " ", fs.size(dos.getenv("PWD") .. "/" .. file), filesystem.lastModified(dos.getenv("PWD") .. "/" .. file))
+      print(os.date("%Y-%m-%d  %I:%M %p", filesystem.lastModified(dos.getenv("PWD") .. "/" .. file)) .. "  " .. padLeft(filesystem.size(dos.getenv("PWD") .. "/" .. file), 15) .. " " .. file)
       totsize = totsize + filesystem.size(dos.getenv("PWD") .. "/" .. file)
+      f = f + 1
     end
-    i = i + 1
   end
-  print(" ", i .. " file(s)", totsize .. " bytes")
-  print(" ", " ", filesystem.spaceTotal() - totsize .. " bytes free")
+  print(" ", f .. " file(s)", totsize .. " bytes")
+  print(" ", d .. " dir(s)", filesystem.spaceTotal() - totsize .. " bytes free")
   print(" ")
 end
 
@@ -129,7 +131,13 @@ local function runline(line)
 	parts = text.tokenize(line)
 	command = string.lower(text.trim(parts[1]))
 	--drive selector
-	if #command == 2 then if string.sub(command, 2, 2) == ":" then filesystem.drive.setcurrent(string.sub(command, 1, 1)) return true end end
+	if #command == 2 then
+    if string.sub(command, 2, 2) == ":" then
+      filesystem.drive.setcurrent(string.sub(command, 1, 1))
+      dos.setenv("PWD", "/")
+      return true
+    end
+  end
 	--internal commands
 	if command == "exit" then history = {} return "exit" end
 	if command == "cls" then term.clear() return true end
