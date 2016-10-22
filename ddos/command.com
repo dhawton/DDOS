@@ -68,6 +68,20 @@ local function label(parts)
 	end
 end
 
+local function chgDir(parts)
+  if #parts == 1 then
+    print(filesystem.drive.getcurrent() .. ":" .. dos.getenv("PWD"))
+  else 
+    local dir = parts[2]
+    if filesystem.exists(dos.getenv("PWD") .. "/" .. dir) then
+      cmd.setWorkingDirectory(cmd.resolve(dir))
+    else
+      print("The system cannot find the path specified")
+    end
+  end
+end
+
+
 local function outputFile(file, paged)
   local handle, reason = filesystem.open(file)
   if not handle then
@@ -115,7 +129,6 @@ function cmd.dir()
   end
   print(" ", f .. " file(s)", comma_format(tostring(totsize)) .. " bytes")
   print(" ", d .. " dir(s)", comma_format(tostring(filesystem.spaceTotal() - totsize)) .. " bytes free")
-  print(" ")
 end
 
 function print_r ( t )  
@@ -167,7 +180,8 @@ local function runline(line)
   end
 	--internal commands
 	if command == "exit" then history = {} return "exit" end
-	if command == "cls" then term.clear() return true end
+  if command == "cd" then chgDir(parts) return true end
+  if command == "cls" then term.clear() return true end
 	if command == "ver" then print(_OSVERSION) return true end
 	if command == "mem" then print(math.floor(computer.totalMemory()/1024).."k RAM, "..math.floor(computer.freeMemory()/1024).."k Free") return true end
 	if command == "dir" then cmd.dir() return true end
@@ -187,6 +201,7 @@ exit --- Exit the command interpreter, Usually restarts it.
 cls ---- Clears the screen.
 ver ---- Outputs version information.
 mem ---- Outputs memory information.
+cd ----- Get current or change working directory.
 dir ---- Lists the files on the current disk.
 cmds --- Lists the commands.
 intro -- Outputs the introduction message.
@@ -303,7 +318,8 @@ end
 if cmd.runline(table.concat(tArgs, " ")) == "exit" then return end
 
 while true do
-	term.write(filesystem.drive.getcurrent() ..":" .. cmd.getWorkingDirectory() .. ">")
+  print(" ")
+  term.write(filesystem.drive.getcurrent() ..":" .. cmd.getWorkingDirectory() .. ">")
 	local line = term.read(history)
 	while #history > 10 do
 		table.remove(history, 1)
