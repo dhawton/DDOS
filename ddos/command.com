@@ -12,6 +12,25 @@ local history = {}
 if DDOS.cmdHistory then history = DDOS.cmdHistory end
 if DDOS.cmdDrive then fs.drive.setcurrent(DDOS.cmdDrive) end
 
+local function comma_format(amt)
+  local form = amt
+  while true do
+    form, k = string.gsub(form, "^(-?%d+)(%d%d%d)", '%1,%2')
+    if k == 0 then
+      break
+    end
+  end
+  return form
+end
+
+local function pad(txt)
+  txt = tostring(txt)
+  return #txt >= 2 and txt or "0" .. txt
+end
+local function nod(n)
+  return n and (tostring(n):gsub("(%.[0-9]+)0+$", "%1")) or "0"
+end
+
 local function runprog(file, parts)
 	DDOS.cmdHistory = history
 	DDOS.cmdDrive = fs.drive.getcurrent()
@@ -77,17 +96,25 @@ function cmd.dir()
   local d = 0
   local totsize = 0
   for file in filesystem.list((dos.getenv("PWD") or "/")) do
+    local da = os.date("*t", filesystem.lastModified(dos.getenv("PWD") .. "/" .. file))
+    local h = da.hour
+    local ap = "AM"
+    if h > 12 then
+      h = h - 12
+      ap = "PM"
+    end
+    local md = string.format("%s-%s-%s  %s:%s %s", da.year, pad(nod(da.month)), pad(nod(da.day)), pad(nod(h)), pad(nod(da.min)), ap)
     if filesystem.isDirectory((dos.getenv("PWD") or "") .. "/" .. file) then
-      print(os.date("%Y-%m-%d  %H:%M") .. "    <DIR>          " .. file)
+      print(md .. "    <DIR>         " .. file)
       d = d + 1
     else
-      print(os.date("%Y-%m-%d  %I:%M %p", filesystem.lastModified(dos.getenv("PWD") .. "/" .. file)) .. "  " .. padLeft(filesystem.size(dos.getenv("PWD") .. "/" .. file), 15) .. " " .. file)
+      print(md .. "  " .. text.padLeft(comma_format(tostring(filesystem.size(dos.getenv("PWD") .. "/" .. file))), 15) .. " " .. file)
       totsize = totsize + filesystem.size(dos.getenv("PWD") .. "/" .. file)
       f = f + 1
     end
   end
-  print(" ", f .. " file(s)", totsize .. " bytes")
-  print(" ", d .. " dir(s)", filesystem.spaceTotal() - totsize .. " bytes free")
+  print(" ", f .. " file(s)", comma_format(tostring(totsize)) .. " bytes")
+  print(" ", d .. " dir(s)", comma_format(tostring(filesystem.spaceTotal() - totsize)) .. " bytes free")
   print(" ")
 end
 
