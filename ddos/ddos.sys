@@ -588,7 +588,7 @@ function terminal_code()
 			cursorBlink.state = not cursorBlink.state
 			if cursorBlink.state then
 				cursorBlink.alt = component.gpu.get(cursorX, cursorY)
-				component.gpu.set(cursorX, cursorY, "_")
+				component.gpu.set(cursorX, cursorY, "█")
 			else
 				component.gpu.set(cursorX, cursorY, cursorBlink.alt)
 			end
