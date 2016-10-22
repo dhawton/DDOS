@@ -500,6 +500,9 @@ function fs_code()
 	function fs.close(handle) return fs.invoke("close", handle) end
 	function fs.isDirectory(path) return fs.invoke("isDirectory", path) end
 	function fs.exists(path) return fs.invoke("exists", path) end
+  function fs.size(path) return fs.invoke("size", path) end
+  function fs.spaceTotal() return fs.invoke("spaceTotal") end
+  function fs.lastModified(path) return fs.invoke("lastModified", path) end
 	function fs.list(path)
 		local i = 0
 		local t = fs.invoke("list", path)
@@ -1121,7 +1124,7 @@ if term.isAvailable() then
 	component.gpu.bind(component.screen.address)
 	component.gpu.setResolution(component.gpu.getResolution())
 	component.gpu.setBackground(0x000000)
-	component.gpu.setForeground(0xFFFFFF)
+	component.gpu.setForeground(0xB9B9B9)
 	term.setCursorBlink(true)
 	term.clear()
 end
@@ -1137,6 +1140,7 @@ function text.endswith(s, send)
 	return #s >= #send and s:find(send, #s-#send+1, true) and true or false
 end
 
+dos.setenv("PWD", "/")
 DDOS = {}
 local function interrupt(data)
 	if data[2] == "RUN" then DDOS.runfile(data[3], table.unpack(data[4])) end
